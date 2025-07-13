@@ -2,9 +2,19 @@
 
 A smart, automated dashboard that analyzes personal bank statements to reveal monthly spending habits and generate personalized financial personas.
 
-![alt text](<monthly financial personas 1-2.png>)
-![alt text](<monthly financial personas 2.png>)
-![alt text](<monthly financial personas 3.png>)
+## 📸 Dashboard Previews
+
+Here are some snapshots from the interactive dashboard:
+
+### 🔍 Overview Table & Filters
+![Overview](assets/monthly%20financial%20personas%201.png)
+
+### 📊 Top Spending Trends
+![Trends](assets/monthly%20financial%20personas%202.png)
+
+### 🥧 Persona Breakdown
+![Persona Pie Chart](assets/monthly%20financial%20personas%203.png)
+
 
 Built with Python 🐍, FastAPI ⚡, Pandas 📊, and Chart.js 📈.
 
