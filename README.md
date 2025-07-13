@@ -2,7 +2,9 @@
 
 A smart, automated dashboard that analyzes personal bank statements to reveal monthly spending habits and generate personalized financial personas.
 
-[text](<../../Downloads/💳 Financial Identity Splitter.html>)
+![alt text](<monthly financial personas 1-2.png>)
+![alt text](<monthly financial personas 2.png>)
+![alt text](<monthly financial personas 3.png>)
 
 Built with Python 🐍, FastAPI ⚡, Pandas 📊, and Chart.js 📈.
 
