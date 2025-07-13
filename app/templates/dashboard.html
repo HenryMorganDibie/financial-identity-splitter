@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>💳 Financial Identity Splitter</title>
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.js"></script>
+  <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2rem; }
+    h1, h2 { margin-top: 2rem; }
+    .chart-container { width: 800px; margin-bottom: 2rem; }
+    .chart-small { width: 400px; margin-bottom: 2rem; }
+    .download-links { margin: 1rem 0; }
+    table { width: 100%; margin-top: 2rem; }
+    th { background-color: #333; color: #fff; }
+    tr:nth-child(even) { background-color: #f9f9f9; }
+    .filters { margin: 1rem 0; }
+    .filters select { margin-right: 1rem; padding: 0.5rem; }
+  </style>
+</head>
+<body>
+  <h1>💳 Monthly Financial Personas</h1>
+
+  <div class="download-links">
+    <a href="/download/monthly_personas.csv">⬇ Download Personas</a> |
+    <a href="/download/monthly_summary.csv">⬇ Download Summary</a> |
+    <a href="/download/transactions_categorized.csv">⬇ Download Transactions</a>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Month</th>
+        <th>Category</th>
+        <th>Total Debit (₦)</th>
+        <th>Persona</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in personas %}
+      <tr>
+        <td>{{ row['month'] }}</td>
+        <td>{{ row['category'] }}</td>
+        <td>{{ '{:,.2f}'.format(row['total_debit']) }}</td>
+        <td>{{ row['persona'] }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>📊 Top Spending Categories</h2>
+  <div class="chart-container">
+    <canvas id="barChart"></canvas>
+  </div>
+
+  <h2>📈 Monthly Spending Trend</h2>
+  <div class="chart-container">
+    <canvas id="lineChart"></canvas>
+  </div>
+
+  <h2>📉 Persona Distribution</h2>
+  <div class="chart-small">
+    <canvas id="pieChart"></canvas>
+  </div>
+
+  <h2>🧾 All Transactions</h2>
+  <div class="filters">
+    <label>Filter by Month:</label>
+    <select id="monthFilter"><option value="">All</option></select>
+    <label>Filter by Category:</label>
+    <select id="categoryFilter"><option value="">All</option></select>
+    <label>Filter by Persona:</label>
+    <select id="personaFilter"><option value="">All</option></select>
+    <button id="downloadFiltered">⬇ Export Filtered CSV</button>
+  </div>
+
+  <table id="txnTable" class="display">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Remarks</th>
+        <th>Debit</th>
+        <th>Credit</th>
+        <th>Category</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for txn in transactions %}
+      <tr>
+        <td>{{ txn['txn_date'] }}</td>
+        <td>{{ txn['remarks'] }}</td>
+        <td>{{ '{:,.2f}'.format(txn['debit']) }}</td>
+        <td>{{ '{:,.2f}'.format(txn['credit']) }}</td>
+        <td>{{ txn['category'] }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <script>
+    const ctx = document.getElementById('barChart');
+    const barData = {
+      labels: {{ bar_data | map(attribute='category') | list | tojson }},
+      datasets: [{
+        label: 'Total Debit (₦)',
+        data: {{ bar_data | map(attribute='total_debit') | list | tojson }},
+        backgroundColor: 'rgba(54, 162, 235, 0.7)',
+        borderColor: 'rgba(54, 162, 235, 1)',
+        borderWidth: 1
+      }]
+    };
+    new Chart(ctx, { type: 'bar', data: barData, options: { responsive: true, scales: { y: { beginAtZero: true } } } });
+
+    const lineCtx = document.getElementById('lineChart');
+    const lineData = {
+      labels: {{ personas | map(attribute='month') | list | tojson }},
+      datasets: [{
+        label: 'Top Category Spend (₦)',
+        data: {{ personas | map(attribute='total_debit') | list | tojson }},
+        fill: false,
+        borderColor: 'rgba(255, 99, 132, 1)',
+        tension: 0.1
+      }]
+    };
+    new Chart(lineCtx, { type: 'line', data: lineData, options: { responsive: true, scales: { y: { beginAtZero: true } } } });
+
+    const pieCtx = document.getElementById('pieChart');
+    const pieData = {
+      labels: [...new Set({{ personas | map(attribute='persona') | list | tojson }})],
+      datasets: [{
+        data: Object.values({{ personas | groupby('persona') | map(attribute='list') | map('length') | list | tojson }}),
+        backgroundColor: ['#f44336', '#2196f3', '#ff9800', '#4caf50', '#9c27b0']
+      }]
+    };
+    new Chart(pieCtx, { type: 'pie', data: pieData });
+
+    $(document).ready(function() {
+      const table = $('#txnTable').DataTable();
+
+      table.column(0).data().unique().sort().each(function (d) {
+        $('#monthFilter').append('<option value="'+d+'">'+d+'</option>');
+      });
+      table.column(4).data().unique().sort().each(function (d) {
+        $('#categoryFilter').append('<option value="'+d+'">'+d+'</option>');
+      });
+      {% for p in personas %}
+        $('#personaFilter').append('<option value="{{ p['persona'] }}">{{ p['persona'] }}</option>');
+      {% endfor %}
+
+      $('#monthFilter').on('change', function() {
+        table.column(0).search(this.value).draw();
+      });
+      $('#categoryFilter').on('change', function() {
+        table.column(4).search(this.value).draw();
+      });
+
+      $('#downloadFiltered').click(function() {
+        const csv = [];
+        const rows = table.rows({ search: 'applied' }).nodes();
+        const headers = $(rows[0]).closest('table').find('thead th').map(function () {
+          return $(this).text();
+        }).get();
+        csv.push(headers.join(","));
+
+        $(rows).each(function () {
+          const row = $(this).find('td').map(function () {
+            return '"' + $(this).text().trim() + '"';
+          }).get();
+          csv.push(row.join(","));
+        });
+
+        const blob = new Blob([csv.join("\n")], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        link.setAttribute("href", URL.createObjectURL(blob));
+        link.setAttribute("download", "filtered_transactions.csv");
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      });
+    });
+  </script>
+</body>
+</html>
